@@ -1,34 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Numbers from './components/Numbers'
 import ContactForm from './components/ContactForm';
 import FilterForm from './components/FilterForm';
+import axios from 'axios';
 
 const Header = ({ text }) => <h2>{text}</h2>
 
 const App = () => {
-
-  const [ contacts, setContacts ] = useState([
-    {
-      name: 'Arto',
-      number: '123456787'
-    },
-    {
-      name: 'Arto H',
-      number: '123456787'
-    },
-    {
-      name: 'Ville',
-      number: '123456787'
-    },
-    {
-      name: 'Kalle Ville',
-      number: '123456787'
-    },
-  ])
-
+  const [ contacts, setContacts ] = useState([])
   const [ newName, setNewName ] = useState('')
   const [ newNumber, setNewNumber ] = useState('')
   const [ filterBy, setFilterBy ] = useState('')
+
+  const hook = () => {
+
+    axios
+      .get('http://localhost:3001/contacts')
+      .then(response => {
+        setContacts(response.data)
+      })
+  }
+
+  useEffect(hook, [])
 
   const handleSubmit = event => {
     event.preventDefault()
