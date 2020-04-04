@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Numbers from './components/Numbers'
 import ContactForm from './components/ContactForm';
 import FilterForm from './components/FilterForm';
-import axios from 'axios';
+import contactsService from './services/contacts';
 
 const Header = ({ text }) => <h2>{text}</h2>
 
@@ -12,31 +12,64 @@ const App = () => {
   const [ newNumber, setNewNumber ] = useState('')
   const [ filterBy, setFilterBy ] = useState('')
 
-  const hook = () => {
-
-    axios
-      .get('http://localhost:3001/contacts')
+  useEffect(() => {
+    contactsService
+      .getAll()
       .then(response => {
-        setContacts(response.data)
+        setContacts(response)
       })
-  }
-
-  useEffect(hook, [])
+  }, [])
 
   const handleSubmit = event => {
     event.preventDefault()
-    if (contacts.map(contact => contact.name)
-        .includes(newName))
-      window.alert(`${newName} is already added to phonebook`)
-    else {
+    if (contacts.map(c => c.name).includes(newName)) {
+      
+      if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
+        const contactToUpdate = contacts.find(c => c.name === newName)
+        const updatedContact = { ...contactToUpdate, number: newNumber}
+
+        contactsService
+          .updateContact(updatedContact)
+          .then(updatedContact => {
+            setContacts(contacts.map(c => c.id !== contactToUpdate.id ? c : updatedContact))
+          })
+      }
+
+    } else {
       const contactObject = {
         name: newName,
         number: newNumber
       }
-      setContacts(contacts.concat(contactObject))
+      contactsService
+        .createContact(contactObject)
+        .then(response => {
+          setContacts(contacts.concat(response))
+          setNewName('')
+          setNewNumber('')
+        })
     }
-    setNewName('')
-    setNewNumber('')
+
+  }
+
+  const deleteContactId = id => {
+
+    const contactName = contacts.find(c => c.id === id).name
+
+    if (contactName === undefined) {
+      alert(`The contact has already been removed`)
+      setContacts(contacts.filter(c => c.id !== id))
+    }
+
+    if (window.confirm(`Delete ${contactName}?`) === false)
+      return
+
+    contactsService
+      .deleteContact(id)
+      .then(() => setContacts(contacts.filter(c => c.id !== id)))
+      .catch(() => {
+        alert(`${contactName} has already been removed`)
+        setContacts(contacts.filter(c => c.id !== id))
+      })
   }
 
   const handleNameChange = event => setNewName(event.target.value)
@@ -48,11 +81,21 @@ const App = () => {
   return (
     <div>
       <Header text='Phonebook' />
-        <FilterForm filterBy={filterBy} handleFilterChange={handleFilterChange} />      
+        <FilterForm
+          filterBy={filterBy}
+          handleFilterChange={handleFilterChange} />      
       <Header text='Add new' />
-        <ContactForm name={newName} number={newNumber} handleNameChange={handleNameChange} handleNumberChange={handleNumberChange} handleSubmit={handleSubmit} />
+        <ContactForm
+          name={newName}
+          number={newNumber}
+          handleNameChange={handleNameChange}
+          handleNumberChange={handleNumberChange}
+          handleSubmit={handleSubmit} />
       <Header text='Numbers' />
-        <Numbers contacts={contacts} filterBy={filterBy} />
+        <Numbers
+          contacts={contacts}
+          filterBy={filterBy}
+          deleteContactId={deleteContactId} />
     </div>
   );
 }
