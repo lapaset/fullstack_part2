@@ -96,7 +96,6 @@ const App = () => {
   const handleFilterChange = event => setFilterBy(event.target.value)
 
   const notificationStyle ={
-		color: 'red',
 		background: 'thistle',
 		fontSize: 20,
 		borderStyle: 'solid',
