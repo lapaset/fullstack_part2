@@ -3,6 +3,8 @@ import Numbers from './components/Numbers'
 import ContactForm from './components/ContactForm';
 import FilterForm from './components/FilterForm';
 import contactsService from './services/contacts';
+import Notification from './components/Notification';
+import ErrorNotification from './components/ErrorNotification';
 
 const Header = ({ text }) => <h2>{text}</h2>
 
@@ -11,6 +13,8 @@ const App = () => {
   const [ newName, setNewName ] = useState('')
   const [ newNumber, setNewNumber ] = useState('')
   const [ filterBy, setFilterBy ] = useState('')
+  const [ notification, setNotification ] = useState(null)
+  const [ errorMessage, setErrorMessage ] = useState(null)
 
   useEffect(() => {
     contactsService
@@ -21,9 +25,17 @@ const App = () => {
   }, [])
 
   const handleSubmit = event => {
+
+    const confirmChange = text => {
+      setNotification(`${text} ${newName}`)
+      setTimeout(() => setNotification(null), 3000)
+      setNewName('')
+      setNewNumber('')
+    }
+
     event.preventDefault()
-    if (contacts.map(c => c.name).includes(newName)) {
-      
+    
+    if (contacts.map(c => c.name).includes(newName)) {  
       if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
         const contactToUpdate = contacts.find(c => c.name === newName)
         const updatedContact = { ...contactToUpdate, number: newNumber}
@@ -31,7 +43,9 @@ const App = () => {
         contactsService
           .updateContact(updatedContact)
           .then(updatedContact => {
-            setContacts(contacts.map(c => c.id !== contactToUpdate.id ? c : updatedContact))
+            setContacts(contacts
+              .map(c => c.id !== contactToUpdate.id ? c : updatedContact))
+            confirmChange('Updated')
           })
       }
 
@@ -44,8 +58,7 @@ const App = () => {
         .createContact(contactObject)
         .then(response => {
           setContacts(contacts.concat(response))
-          setNewName('')
-          setNewNumber('')
+          confirmChange('Added')
         })
     }
 
@@ -53,23 +66,27 @@ const App = () => {
 
   const deleteContactId = id => {
 
-    const contactName = contacts.find(c => c.id === id).name
-
-    if (contactName === undefined) {
-      alert(`The contact has already been removed`)
+    const contactAlreadyRemoved = name => {
+      setErrorMessage(`${name} has already been deleted`)
+      setTimeout(() => setErrorMessage(null), 3000)
       setContacts(contacts.filter(c => c.id !== id))
     }
+
+    const contactName = contacts.find(c => c.id === id).name
+
+    if (contactName === undefined)
+      contactAlreadyRemoved('Contact')
 
     if (window.confirm(`Delete ${contactName}?`) === false)
       return
 
     contactsService
       .deleteContact(id)
-      .then(() => setContacts(contacts.filter(c => c.id !== id)))
-      .catch(() => {
-        alert(`${contactName} has already been removed`)
+      .then(() => {
+        setNotification(`Deleted ${contactName}`)
         setContacts(contacts.filter(c => c.id !== id))
       })
+      .catch(() => contactAlreadyRemoved(contactName))
   }
 
   const handleNameChange = event => setNewName(event.target.value)
@@ -78,24 +95,36 @@ const App = () => {
 
   const handleFilterChange = event => setFilterBy(event.target.value)
 
+  const notificationStyle ={
+		color: 'red',
+		background: 'thistle',
+		fontSize: 20,
+		borderStyle: 'solid',
+		borderRadius: 5,
+		padding: 10,
+		marginBottom: 10        
+  }
+  
   return (
     <div>
       <Header text='Phonebook' />
-        <FilterForm
-          filterBy={filterBy}
-          handleFilterChange={handleFilterChange} />      
+      <ErrorNotification message={errorMessage} notificationStyle={notificationStyle} />
+      <Notification message={notification} notificationStyle={notificationStyle} />
+      <FilterForm
+        filterBy={filterBy}
+        handleFilterChange={handleFilterChange} />      
       <Header text='Add new' />
-        <ContactForm
-          name={newName}
-          number={newNumber}
-          handleNameChange={handleNameChange}
-          handleNumberChange={handleNumberChange}
-          handleSubmit={handleSubmit} />
+      <ContactForm
+        name={newName}
+        number={newNumber}
+        handleNameChange={handleNameChange}
+        handleNumberChange={handleNumberChange}
+        handleSubmit={handleSubmit} />
       <Header text='Numbers' />
-        <Numbers
-          contacts={contacts}
-          filterBy={filterBy}
-          deleteContactId={deleteContactId} />
+      <Numbers
+        contacts={contacts}
+        filterBy={filterBy}
+        deleteContactId={deleteContactId} />
     </div>
   );
 }
